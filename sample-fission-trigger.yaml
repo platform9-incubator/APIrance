@@ -1,0 +1,19 @@
+apiVersion: fission.io/v1
+kind: HTTPTrigger
+metadata:
+  clusterName: ""
+  creationTimestamp: 2017-11-13T22:10:19Z
+  deletionGracePeriodSeconds: null
+  deletionTimestamp: null
+  name: 1f16c7cb-cf40-437e-a917-9b3968a96447
+  namespace: default
+  resourceVersion: "7048733"
+  selfLink: /apis/fission.io/v1/namespaces/default/httptriggers/1f16c7cb-cf40-437e-a917-9b3968a96447
+  uid: 6f7b96db-c8bf-11e7-bfce-0a4b0fc07eea
+spec:
+  functionref:
+    name: hellolog
+    type: name
+  host: ""
+  method: GET
+  relativeurl: /hellolog
