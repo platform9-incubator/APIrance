@@ -1,10 +1,10 @@
-package cmd
+package main
 
 import (
 	"fmt"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/loads/fmts"
-	"github.com/platform9-incubator/APIrance/pkg/utils"
+	"./pkg/utils"
 	"gopkg.in/urfave/cli.v2"
 	"log"
 	"os"
