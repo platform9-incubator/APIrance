@@ -17,7 +17,6 @@ import (
 
 // CWD doesn't have trailing slash
 var CWD string
-var FISSION_BIN string
 
 
 func init() {
@@ -32,7 +31,7 @@ func init() {
 	// Check if fission CLI is available to use
 
 	which := exec.Command("which", "fission")
-	FISSION_BIN, err := which.Output()
+	_, err = which.Output()
 	if err != nil {
 		log.Println(`
 		Fission tool is not installed. Assuming you're on MacOS, run below command
@@ -42,8 +41,6 @@ func init() {
 		`)
 		log.Fatalln(err)
 	}
-	// TODO: delete this print statement
-	fmt.Printf("Found fission at %s\n", FISSION_BIN)
 	loads.AddLoader(fmts.YAMLMatcher, fmts.YAMLDoc)
 }
 
@@ -69,7 +66,7 @@ func generate(c *cli.Context) error {
 	return nil
 }
 
-func scaffoldAPI(f *env.FissionEnvironment ,d *loads.Document) {
+func scaffoldAPI(f *env.FissionEnvironment, d *loads.Document) {
 	var wg sync.WaitGroup
 	operations := d.Analyzer.Operations()
 	for httpMethod, v := range operations {
