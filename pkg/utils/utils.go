@@ -2,10 +2,10 @@ package utils
 
 import (
 	"errors"
+	"fmt"
+	_ "fmt"
 	"github.com/go-openapi/spec"
 	"log"
-	_ "fmt"
-	"fmt"
 	"os"
 )
 
@@ -49,7 +49,6 @@ func getValidOperators(p *spec.PathItemProps) (map[string]spec.Operation, error)
 	}
 	return validPaths, nil
 }
-
 
 func Cwd() string {
 	dir, err := os.Getwd()

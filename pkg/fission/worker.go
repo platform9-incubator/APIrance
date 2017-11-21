@@ -1,9 +1,9 @@
 package fission
 
 import (
-	"sync"
-	"github.com/go-openapi/spec"
 	"./env"
+	"github.com/go-openapi/spec"
+	"sync"
 )
 
 type Worker struct {
@@ -17,5 +17,3 @@ func Start(w *Worker) {
 	defer w.WaitGroup.Done()
 	w.Environment.Run(w.HttpMethod, w.Operation)
 }
-
-

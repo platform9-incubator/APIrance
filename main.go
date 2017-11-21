@@ -1,21 +1,20 @@
 package main
 
 import (
+	"./pkg/fission"
+	"./pkg/fission/env"
+	"./pkg/utils"
 	"fmt"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/loads/fmts"
-	"./pkg/fission/env"
-	"./pkg/fission"
-	"./pkg/utils"
 	"gopkg.in/urfave/cli.v2"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sync"
 	"strings"
+	"sync"
 )
-
 
 func init() {
 	// Ensure we can determine our current working directory
@@ -51,7 +50,7 @@ func generate(c *cli.Context) error {
 		log.Fatalln("not enough arguments")
 	} else {
 		fizzshin = env.Fission[fissEnv]
-		fizzshin.InitializeEnvironment()
+		//fizzshin.InitializeEnvironment()
 		swaggerDoc = c.Args().First()
 	}
 
@@ -60,10 +59,13 @@ func generate(c *cli.Context) error {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	// Not validating swagger doc since we're using v3.0 and it's not well supported
+	// by go-openapi
+
+	// begin scaffolding the functions
 	scaffoldAPI(fizzshin, specDoc)
 	return nil
 }
-
 
 func main() {
 	app := &cli.App{
@@ -106,11 +108,16 @@ func scaffoldAPI(f *env.FissionEnvironment, d *loads.Document) {
 				fmt.Errorf("[scaffoldAPI] More than 1 string in operation.ID '%s'", operation.ID)
 				continue
 			}
+			// Potentially useful
+			//paramMap := d.Analyzer.ParamsFor(httpMethod, path)
+			//for a, params := range paramMap {
+			//	fmt.Println(a, params)
+			//}
 			wg.Add(1)
-			go fission.Start(&fission.Worker{
-				WaitGroup: &wg,
-				HttpMethod: httpMethod,
-				Operation: operation,
+			fission.Start(&fission.Worker{
+				WaitGroup:   &wg,
+				HttpMethod:  httpMethod,
+				Operation:   operation,
 				Environment: f,
 			})
 		}

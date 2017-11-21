@@ -1,12 +1,12 @@
 package env
 
 import (
-	"github.com/go-openapi/spec"
-	"os/exec"
-	"fmt"
 	"errors"
+	"fmt"
+	"github.com/go-openapi/spec"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 	_ "time"
 )
@@ -31,8 +31,13 @@ var Fission = map[string]*FissionEnvironment{
 		StubFileURL:   "https://raw.githubusercontent.com/fission/fission/master/examples/python/hello.py",
 		FileExtension: ".py",
 	},
+	"ruby": {
+		Name:          "ruby",
+		ImageName:     "fission/ruby-env",
+		StubFileURL:   "https://raw.githubusercontent.com/fission/fission/master/examples/ruby/hello.rb",
+		FileExtension: ".rb",
+	},
 }
-
 
 // fission env create --name nodejs --image fission/node-env
 func (f FissionEnvironment) InitializeEnvironment() error {
@@ -41,10 +46,12 @@ func (f FissionEnvironment) InitializeEnvironment() error {
 		// The environment is already present
 		log.Printf("Environment '%s' already present, skipping creation\n", f.Name)
 		return nil
+	} else {
+		fmt.Printf("Environment %s not found, creating...", f.Name)
+		out := runFission(fmt.Sprintf("env create --name %s --image %s", f.Name, f.ImageName))
+		fmt.Println(out)
+		return nil
 	}
-	out := runFission(fmt.Sprintf("env create --name %s --image %s", f.Name, f.ImageName))
-	fmt.Println(out)
-	return nil
 }
 
 func (f FissionEnvironment) Run(httpMethod string, o *spec.Operation) error {
@@ -101,17 +108,16 @@ func (f FissionEnvironment) createRoute(httpMethod, funcName string) error {
 	return nil
 }
 
-
 // runFission takes a fission CLI command but without the 'fission', which is provided
 // by 'getFissionBinary'. Returns results (if any) of command, and logs errors
 func runFission(command string) string {
 	args := fmt.Sprintf("%s %s", getFissionBinary(), command)
-	fmt.Println("cmd: "+args)
+	fmt.Println("cmd: " + args)
 	cmd := exec.Command("/usr/bin/bash", "-c", args)
 	var out []byte
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("Error running fission command '%s': %s\n",args, string(out[:]))
+		log.Printf("Error running fission command '%s': %s\n", args, string(out[:]))
 		log.Fatalln(err)
 	}
 	output := string(out[:])
