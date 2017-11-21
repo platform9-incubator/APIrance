@@ -1,13 +1,13 @@
-package main
+package cmd
 
 import (
 	"fmt"
-	"gopkg.in/urfave/cli.v2"
-	"os"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/loads/fmts"
-
+	"github.com/platform9-incubator/APIrance/pkg/utils"
+	"gopkg.in/urfave/cli.v2"
 	"log"
+	"os"
 )
 
 func init() {
@@ -16,11 +16,23 @@ func init() {
 
 func loadAPISpec(c *cli.Context) error {
 	swaggerDoc := c.Args().Get(0)
+	// SwaggerDoc is a URL or path to a local file
 	specDoc, err := loads.Spec(swaggerDoc)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	fmt.Println(specDoc.Spec().SwaggerProps.Definitions)
+	fmt.Printf("All paths?? %s", specDoc.Analyzer.AllPaths())
+	allPaths := specDoc.Analyzer.AllPaths()
+	for s, pathItem := range allPaths {
+		fmt.Printf("endpoint path: %s\n", s)
+		fmt.Println(utils.Parse(&pathItem.PathItemProps))
+
+	}
+	//expanded, err := specDoc.Expanded()
+	//if err != nil {
+	//	log.Fatalln(err)
+	//}
+	//fmt.Println(expanded)
 	return nil
 }
 
@@ -28,8 +40,8 @@ func main() {
 	var baseCommandFlag string
 
 	app := &cli.App{
-		Name:  "APIrance",
-		Usage: "Makes your API make an appearance in Fission",
+		Name:    "APIrance",
+		Usage:   "Makes your API make an appearance in Fission",
 		Version: "0.0.1",
 		Flags: []cli.Flag{
 			&cli.StringFlag{

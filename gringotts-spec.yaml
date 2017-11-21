@@ -1,0 +1,218 @@
+openapi: 3.0.0
+servers: []
+info:
+  description: API to access Gringotts CockroachDB backend
+  version: "1.0.1"
+  title: Gringotts API
+  contact:
+    email: graham@platform9.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+  - name: support
+    description: Support-based data and metrics
+paths:
+  /ticket:
+    get:
+      tags:
+        - support
+      summary: retrieve list of tickets
+      operationId: searchTickets
+      description: |
+        By passing in the appropriate options, search for tickets or a subset of tickets in the database
+      parameters:
+        - in: query
+          name: customer
+          schema:
+            type: string
+          required: false
+          description: '"customerID" will return all tickets for that customer. "yes" will return all customer tickets. "no" will return all non-customer tickets.'
+        - in: query
+          name: zendesk_id
+          schema:
+            type: number
+          required: false
+          description: 'ID number of ticket to find'
+      responses:
+        '200':
+          description: search results matching criteria
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ticket'
+        '400':
+          description: bad input parameter
+        '404':
+          description: no results found
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketQuery'
+    post:
+      tags:
+        - support
+      summary: save a new ticket
+      operationId: saveTicket
+      description: Adds a ticket to the database
+      responses:
+        '201':
+          description: 'Successfully saved ticket #'
+        '400':
+          description: 'invalid input, object invalid'
+        '409':
+          description: 'Error: Ticket already exists'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+        description: Inventory item to add
+    put:
+      tags:
+        - support
+      summary: update a ticket
+      operationId: updateTicket
+      description: Updates an existing ticket
+      responses:
+        '200':
+          description: item updated
+        '400':
+          description: 'invalid input, object invalid'
+        '404':
+          description: item not found
+    delete:
+      tags:
+        - support
+      summary: delete a ticket
+      operationId: deleteTicket
+      description: Deletes an existing ticket
+      responses:
+        '200':
+          description: ticket deleted
+        '404':
+          description: ticket not found
+  /ticket_sla:
+    get:
+      tags:
+        - support
+      summary: get SLA events
+      operationId: getTicketSla
+      description: 'By specifying the correct parameters, search for ticket SLA events'
+      parameters:
+        - in: query
+          name: customer
+          schema:
+            type: string
+          required: false
+          description: '"customerID" will return all tickets for that customer.'
+        - in: query
+          name: zendesk_id
+          schema:
+            type: number
+          required: false
+          description: 'Get all SLA Breaches for ticket with this ID'
+        - in: query
+          name: since
+          schema:
+            type: string
+            format: date-time
+          required: false
+          description: 'Get all SLA breaches that occur after this datetime'
+        - in: query
+          name: until
+          schema:
+            type: string
+            format: date-time
+          description: 'Get all SLA breaches that have occurred before this datetime. It is recommended to use this with the "since" parameter'
+      responses:
+        '200':
+          description: search results matching criteria
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TicketSla'
+    post:
+      tags:
+        - support
+      summary: record SLA breach
+      operationId: saveTicketSla
+      description: Adds a Ticket SLA event to the database
+      responses:
+        '201':
+          description: 'Successfully saved ticket #'
+        '400':
+          description: 'Invalid input, object invalid'
+        '404':
+          description: 'Ticket referenced does not exist'
+        '409':
+          description: 'Error: SLA event already exists'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketSla'
+components:
+  schemas:
+    TicketQuery:
+      type: object
+      properties:
+        zendesk_id:
+          type: number
+          format: int32
+          example: 448409
+        is_customer:
+          type: boolean
+    Ticket:
+      type: object
+      required:
+        - zendesk_id
+        - title
+        - created_at
+        - closed_by_merge
+      properties:
+        zendesk_id:
+          type: number
+          format: int32
+          example: 448409
+        title:
+          type: string
+        created_at:
+          type: number
+          format: int64
+          example: 1502087853
+        solved_at:
+          type: number
+          format: int64
+          example: 1504081263
+        closed_by_merge:
+          type: boolean
+        details:
+          type: object
+    TicketSla:
+      type: object
+      required:
+        - zendesk_id
+        - event_type
+        - event_time
+        - event_detail
+      properties:
+        zendesk_id:
+          type: number
+          format: int32
+          example: 448409
+        event_type:
+          type: string
+        event_time:
+          type: number
+          format: int64
+          example: 1502087853
+        event_notes:
+          type: string
+        event_detail:
+          type: string
