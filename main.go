@@ -4,51 +4,109 @@ import (
 	"fmt"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/loads/fmts"
-	"./pkg/utils"
+	"./pkg/fission/env"
+	"./pkg/fission"
 	"gopkg.in/urfave/cli.v2"
 	"log"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"sync"
 )
 
+// CWD doesn't have trailing slash
+var CWD string
+var FISSION_BIN string
+
+
 func init() {
+	// Ensure we can determine our current working directory
+	CWD, err := os.Getwd()
+	if err != nil {
+		log.Println("Literally how man??")
+		log.Fatalln(err)
+	}
+	// TODO: delete this print statement
+	fmt.Printf("Current working directory is %s\n", CWD)
+	// Check if fission CLI is available to use
+
+	which := exec.Command("which", "fission")
+	FISSION_BIN, err := which.Output()
+	if err != nil {
+		log.Println(`
+		Fission tool is not installed. Assuming you're on MacOS, run below command
+		curl -Lo fission https://github.com/fission/fission/releases/download/v0.4.0/fission-cli-osx
+		&& chmod +x fission
+		&& sudo mv fission /usr/local/bin/
+		`)
+		log.Fatalln(err)
+	}
+	// TODO: delete this print statement
+	fmt.Printf("Found fission at %s\n", FISSION_BIN)
 	loads.AddLoader(fmts.YAMLMatcher, fmts.YAMLDoc)
 }
 
-func loadAPISpec(c *cli.Context) error {
-	swaggerDoc := c.Args().Get(0)
-	// SwaggerDoc is a URL or path to a local file
+func generate(c *cli.Context) error {
+	var fission *env.FissionEnvironment
+	var swaggerDoc string
+	// Ensure fission environment flag value and path/URL for swagger spec is provided
+	if fissEnv := c.String("env"); fissEnv == "" || c.NArg() <= 0 {
+		cli.ShowAppHelp(c)
+		log.Fatalln("not enough arguments")
+	} else {
+		fission = env.Fission[fissEnv]
+		fission.InitializeEnvironment()
+		swaggerDoc = c.Args().First()
+	}
+
+	// swaggerDoc is a URL or path to a local file
 	specDoc, err := loads.Spec(swaggerDoc)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	fmt.Printf("All paths?? %s", specDoc.Analyzer.AllPaths())
-	allPaths := specDoc.Analyzer.AllPaths()
-	for s, pathItem := range allPaths {
-		fmt.Printf("endpoint path: %s\n", s)
-		fmt.Println(utils.Parse(&pathItem.PathItemProps))
+	scaffoldAPI(fission, specDoc)
+	return nil
+}
 
+func scaffoldAPI(f *env.FissionEnvironment ,d *loads.Document) {
+	var wg sync.WaitGroup
+	operations := d.Analyzer.Operations()
+	for httpMethod, v := range operations {
+		scaffoldHTTPMethodDir(httpMethod)
+
+		for _, operation := range v {
+			wg.Add(1)
+			go fission.Start(&fission.Worker{
+				WaitGroup: &wg,
+				HttpMethod: httpMethod,
+				Operation: operation,
+				Environment: f,
+			})
+		}
 	}
-	//expanded, err := specDoc.Expanded()
-	//if err != nil {
-	//	log.Fatalln(err)
-	//}
-	//fmt.Println(expanded)
+	wg.Wait()
+}
+
+// scaffoldHTTPMethodDir looks in the current dir for a dir matching httpMethod
+// and creates it if not there
+func scaffoldHTTPMethodDir(httpMethod string) error {
+	methodDir := filepath.Join(CWD, httpMethod)
+	err := os.MkdirAll(methodDir, os.ModePerm)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	return nil
 }
 
 func main() {
-	var baseCommandFlag string
-
 	app := &cli.App{
 		Name:    "APIrance",
 		Usage:   "Makes your API make an appearance in Fission",
 		Version: "0.0.1",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:        "PH",
-				Value:       "Placeholder",
-				Usage:       "Used for placeholding a spot for adding flags to the base command",
-				Destination: &baseCommandFlag,
+				Name:  "env",
+				Usage: "Environment and language in which routes and functions will be created",
 			},
 		},
 		Commands: []*cli.Command{
@@ -56,9 +114,9 @@ func main() {
 				Name:    "generate",
 				Aliases: []string{"g"},
 				Usage:   "generate some yaml files from this spec",
-				Action:  loadAPISpec,
+				Action:  generate,
 				Flags: []cli.Flag{
-					&cli.BoolFlag{Name: "commit"},
+					&cli.StringFlag{Name: "commit"},
 					&cli.BoolFlag{Name: "push"},
 				},
 			},

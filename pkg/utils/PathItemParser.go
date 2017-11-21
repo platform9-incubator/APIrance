@@ -1,23 +1,50 @@
 package utils
 
 import (
+	"errors"
 	"github.com/go-openapi/spec"
+	"log"
+	_ "fmt"
 	"fmt"
 )
 
 func Parse(p *spec.PathItemProps) (map[string]string, error) {
-	pathDescriptions := make(map[string]string)
-	if p.Get != nil {
-		pathDescriptions["GET"] = p.Get.Description
+	_, err := getValidOperators(p)
+	if err != nil {
+		log.Fatalln(err)
 	}
-	if p.Head != nil {
-		pathDescriptions["HEAD"] = p.Get.Description
+	//for _, pathItem := range paths {
+	//	fmt.Println(spec.Operation.JSONLookup(pathItem, "Description"))
+	//}
+	return nil, nil
+}
+
+// Returns number of valid of
+func getValidOperators(p *spec.PathItemProps) (map[string]spec.Operation, error) {
+	validPaths := make(map[string]spec.Operation)
+	if p.Get != nil {
+		validPaths["get"] = *p.Get
 	}
 	if p.Post != nil {
-		pathDescriptions["POST"] = p.Get.Description
+		validPaths["post"] = *p.Post
 	}
-
-	fmt.Println("ayyyy 😎")
-
-	return pathDescriptions, nil
+	if p.Put != nil {
+		validPaths["put"] = *p.Put
+	}
+	if p.Patch != nil {
+		fmt.Errorf("patch found but fission currently doesn't support that HTTP method so skipping")
+	}
+	if p.Delete != nil {
+		validPaths["delete"] = *p.Delete
+	}
+	if p.Head != nil {
+		validPaths["head"] = *p.Head
+	}
+	if p.Options != nil {
+		validPaths["options"] = *p.Options
+	}
+	if len(validPaths) == 0 {
+		return nil, errors.New("no valid operators for this path")
+	}
+	return validPaths, nil
 }
