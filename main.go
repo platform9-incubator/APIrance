@@ -6,6 +6,7 @@ import (
 	"github.com/go-openapi/loads/fmts"
 	"./pkg/fission/env"
 	"./pkg/fission"
+	"./pkg/utils"
 	"gopkg.in/urfave/cli.v2"
 	"log"
 	"os"
@@ -15,19 +16,16 @@ import (
 	"strings"
 )
 
-// CWD doesn't have trailing slash
-var CWD string
-
 
 func init() {
 	// Ensure we can determine our current working directory
-	CWD, err := os.Getwd()
+	cwd, err := os.Getwd()
 	if err != nil {
 		log.Println("Literally how man??")
 		log.Fatalln(err)
 	}
 	// TODO: delete this print statement
-	fmt.Printf("Current working directory is %s\n", CWD)
+	fmt.Printf("Current working directory is %s\n", cwd)
 	// Check if fission CLI is available to use
 
 	which := exec.Command("which", "fission")
@@ -66,40 +64,6 @@ func generate(c *cli.Context) error {
 	return nil
 }
 
-func scaffoldAPI(f *env.FissionEnvironment, d *loads.Document) {
-	var wg sync.WaitGroup
-	operations := d.Analyzer.Operations()
-	for httpMethod, v := range operations {
-		scaffoldHTTPMethodDir(httpMethod)
-
-		for _, operation := range v {
-			// FIXME: below hack will ignore endpoints like '/pets/{id}' due to
-			// the operation ID being a sentence
-			if len(strings.Split(operation.ID, " ")) > 1 {
-				continue
-			}
-			wg.Add(1)
-			go fission.Start(&fission.Worker{
-				WaitGroup: &wg,
-				HttpMethod: httpMethod,
-				Operation: operation,
-				Environment: f,
-			})
-		}
-	}
-	wg.Wait()
-}
-
-// scaffoldHTTPMethodDir looks in the current dir for a dir matching httpMethod
-// and creates it if not there
-func scaffoldHTTPMethodDir(httpMethod string) error {
-	methodDir := filepath.Join(CWD, httpMethod)
-	err := os.MkdirAll(methodDir, os.ModePerm)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	return nil
-}
 
 func main() {
 	app := &cli.App{
@@ -127,4 +91,42 @@ func main() {
 	}
 
 	app.Run(os.Args)
+}
+
+func scaffoldAPI(f *env.FissionEnvironment, d *loads.Document) {
+	var wg sync.WaitGroup
+	operations := d.Analyzer.Operations()
+	for httpMethod, v := range operations {
+		scaffoldHTTPMethodDir(httpMethod)
+
+		for _, operation := range v {
+			// FIXME: below hack will ignore endpoints like '/pets/{id}' due to
+			// the operation ID being a sentence
+			if len(strings.Split(operation.ID, " ")) > 1 {
+				fmt.Errorf("[scaffoldAPI] More than 1 string in operation.ID '%s'", operation.ID)
+				continue
+			}
+			wg.Add(1)
+			go fission.Start(&fission.Worker{
+				WaitGroup: &wg,
+				HttpMethod: httpMethod,
+				Operation: operation,
+				Environment: f,
+			})
+		}
+	}
+	wg.Wait()
+}
+
+// scaffoldHTTPMethodDir looks in the current dir for a dir matching httpMethod
+// and creates it if not there
+func scaffoldHTTPMethodDir(httpMethod string) error {
+	scaffoldDir := filepath.Join(utils.Cwd(), "fission")
+	methodDir := filepath.Join(scaffoldDir, httpMethod)
+	err := os.MkdirAll(methodDir, os.ModePerm)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Printf("Created dir: %s\n", methodDir)
+	return nil
 }
