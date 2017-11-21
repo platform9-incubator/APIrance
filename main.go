@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"strings"
 )
 
 // CWD doesn't have trailing slash
@@ -47,15 +48,15 @@ func init() {
 }
 
 func generate(c *cli.Context) error {
-	var fission *env.FissionEnvironment
+	var fizzshin *env.FissionEnvironment
 	var swaggerDoc string
 	// Ensure fission environment flag value and path/URL for swagger spec is provided
 	if fissEnv := c.String("env"); fissEnv == "" || c.NArg() <= 0 {
 		cli.ShowAppHelp(c)
 		log.Fatalln("not enough arguments")
 	} else {
-		fission = env.Fission[fissEnv]
-		fission.InitializeEnvironment()
+		fizzshin = env.Fission[fissEnv]
+		fizzshin.InitializeEnvironment()
 		swaggerDoc = c.Args().First()
 	}
 
@@ -64,7 +65,7 @@ func generate(c *cli.Context) error {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	scaffoldAPI(fission, specDoc)
+	scaffoldAPI(fizzshin, specDoc)
 	return nil
 }
 
@@ -75,6 +76,11 @@ func scaffoldAPI(f *env.FissionEnvironment ,d *loads.Document) {
 		scaffoldHTTPMethodDir(httpMethod)
 
 		for _, operation := range v {
+			// FIXME: below hack will ignore endpoints like '/pets/{id}' due to
+			// the operation ID being a sentence
+			if len(strings.Split(operation.ID, " ")) > 1 {
+				continue
+			}
 			wg.Add(1)
 			go fission.Start(&fission.Worker{
 				WaitGroup: &wg,

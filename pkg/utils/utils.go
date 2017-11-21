@@ -6,6 +6,7 @@ import (
 	"log"
 	_ "fmt"
 	"fmt"
+	"os"
 )
 
 func Parse(p *spec.PathItemProps) (map[string]string, error) {
@@ -47,4 +48,13 @@ func getValidOperators(p *spec.PathItemProps) (map[string]spec.Operation, error)
 		return nil, errors.New("no valid operators for this path")
 	}
 	return validPaths, nil
+}
+
+
+func Cwd() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatalln("why can't we get current working dir?")
+	}
+	return dir
 }
