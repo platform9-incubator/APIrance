@@ -50,7 +50,7 @@ func generate(c *cli.Context) error {
 		log.Fatalln("not enough arguments")
 	} else {
 		fizzshin = env.Fission[fissEnv]
-		//fizzshin.InitializeEnvironment()
+		fizzshin.InitializeEnvironment()
 		swaggerDoc = c.Args().First()
 	}
 
