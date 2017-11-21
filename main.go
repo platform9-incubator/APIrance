@@ -114,7 +114,7 @@ func scaffoldAPI(f *env.FissionEnvironment, d *loads.Document) {
 			//	fmt.Println(a, params)
 			//}
 			wg.Add(1)
-			fission.Start(&fission.Worker{
+			go fission.Start(&fission.Worker{
 				WaitGroup:   &wg,
 				HttpMethod:  httpMethod,
 				Operation:   operation,
